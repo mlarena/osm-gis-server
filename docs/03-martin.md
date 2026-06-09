@@ -8,7 +8,7 @@
 
 ```bash
 # Скачивание последнего релиза
-curl -LO https://github.com/maplibre/martin/releases/latest/download/debian-x86_64.deb
+wget https://github.com/maplibre/martin/releases/latest/download/debian-x86_64.deb
 
 # Установка пакета
 sudo dpkg -i ./debian-x86_64.deb
@@ -18,6 +18,9 @@ martin --help
 
 # Удаление установочного файла
 rm ./debian-x86_64.deb
+
+# Проверьте установку
+martin --version
 ```
 
 ## 2. Запуск
@@ -26,9 +29,23 @@ rm ./debian-x86_64.deb
 
 ```bash
 # Пример запуска с подключением к базе gis
-export DATABASE_URL="postgresql://postgres:password@localhost:5432/gis"
-martin
+export PGPASSWORD='12345678'
+martin postgresql://postgres@localhost:5432/gis
 ```
+
+ в новом терминале
+ Проверьте работу сервера
+Откройте новый терминал (оставив Martin запущенным) и выполните:
+
+bash
+# Проверка здоровья
+curl http://localhost:3000/health
+
+# Список доступных источников (таблиц)
+curl http://localhost:3000/catalog
+
+# Информация о слое дорог (TileJSON)
+curl http://localhost:3000/planet_osm_line
 
 ## 3. Особенности
 - **Автоматическое обнаружение**: Martin сам находит таблицы с геометрией в PostGIS.

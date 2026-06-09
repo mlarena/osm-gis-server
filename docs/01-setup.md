@@ -8,7 +8,8 @@
 
 ```bash
 apt update
-apt install -y postgresql-15 postgis postgresql-15-postgis-3   osm2pgsql osmium-tool curl wget htop iotop
+apt install -y postgresql-15 postgis postgresql-15-postgis-3 osm2pgsql osmium-tool curl wget htop iotop
+apt install -y postgresql postgresql-contrib postgis osm2pgsql osmium-tool wget unzip ? 
 ```
 
 ## 2. Настройка пользователя PostgreSQL
