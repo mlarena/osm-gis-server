@@ -1,0 +1,42 @@
+
+# 4. Импорт Калининграда с --slim (теперь с slim)
+cd /osmpbf
+export PGPASSWORD='12345678'
+
+osm2pgsql --create \
+          --slim \
+          --database gis \
+          --username postgres \
+          --host localhost \
+          --port 5432 \
+          --style /usr/share/osm2pgsql/default.style \
+          --hstore \
+          --cache 8000 \
+          --number-processes 4 \
+          kaliningrad-260407.osm.pbf
+
+# 5. Теперь --append будет работать
+osm2pgsql --append \
+          --slim \
+          --database gis \
+          --username postgres \
+          --host localhost \
+          --port 5432 \
+          --style /usr/share/osm2pgsql/default.style \
+          --hstore \
+          --cache 8000 \
+          --number-processes 4 \
+          crimean-fed-district-260407.osm.pbf
+
+# 6. Импорт Дальнего Востока
+osm2pgsql --append \
+          --slim \
+          --database gis \
+          --username postgres \
+          --host localhost \
+          --port 5432 \
+          --style /usr/share/osm2pgsql/default.style \
+          --hstore \
+          --cache 8000 \
+          --number-processes 4 \
+          far-eastern-fed-district-260407.osm.pbf

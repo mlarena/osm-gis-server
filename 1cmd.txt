@@ -1,0 +1,42 @@
+scp E:\_Maps\osm\crimean-fed-district-260407.osm.pbf devuser@192.168.192.156:/osmpbf
+scp E:\_Maps\osm\far-eastern-fed-district-260407.osm.pbf devuser@192.168.192.156:/osmpbf
+scp E:\_Maps\osm\kaliningrad-260407.osm.pbf devuser@192.168.192.156:/osmpbf
+
+# 1. Установите PostGIS 
+sudo apt update
+sudo apt install -y postgresql postgresql-contrib postgis \
+                    osm2pgsql osmium-tool wget unzip
+
+# зададим пароль пользователю
+sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '12345678';"
+
+# Проверьте версии
+psql --version
+osm2pgsql --version
+# Проверьте статус PostgreSQL
+sudo systemctl status postgresql --no-pager
+
+
+выдает
+
+# 1. Создайте базу данных gis
+sudo -u postgres psql -c "CREATE DATABASE gis;"
+
+# 2. Подключитесь к базе gis и создайте расширения
+sudo -u postgres psql -d gis -c "CREATE EXTENSION postgis;"
+sudo -u postgres psql -d gis -c "CREATE EXTENSION postgis_topology;"
+sudo -u postgres psql -d gis -c "CREATE EXTENSION hstore;"
+
+# 3. Теперь проверьте версию PostGIS (уже в базе gis)
+sudo -u postgres psql -d gis -c "SELECT PostGIS_version();"
+
+# 4. Посмотрите все установленные расширения
+sudo -u postgres psql -d gis -c "\dx"
+
+
+загрузить 999
+перезапустить сервер
+sudo systemctl restart postgresql
+
+
+----

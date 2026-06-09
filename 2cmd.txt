@@ -1,0 +1,11 @@
+# Проверьте путь к конфигурационному файлу
+sudo -u postgres psql -c "SHOW config_file;"
+
+# Проверьте применённые настройки
+sudo -u postgres psql -c "SHOW shared_buffers;"
+sudo -u postgres psql -c "SHOW maintenance_work_mem;"
+sudo -u postgres psql -c "SHOW work_mem;"
+sudo -u postgres psql -c "SHOW effective_cache_size;"
+
+
+sudo tail -50 /var/log/postgresql/postgresql-15-main.log | grep -i "error\|fatal\|panic"
