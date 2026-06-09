@@ -10,7 +10,9 @@
 
 Первый файл импортируется с флагом `--create`. Это создаст структуру таблиц.
 
-```bash
+
+export PGPASSWORD='12345678'
+
 osm2pgsql --create --slim \
     --database gis \
     --username postgres \
@@ -20,14 +22,12 @@ osm2pgsql --create --slim \
     --cache 8192 \
     --number-processes 4 \
     --hstore \
-    /osmpbf/kaliningrad-latest.osm.pbf
-```
+    /osmpbf/monaco-260605.osm.pbf
 
 ## 3. Добавление дополнительных регионов
 
-Все последующие файлы должны импортироваться с флагом `--append`.
+# Все последующие файлы должны импортироваться с флагом `--append`.
 
-```bash
 # Добавление Крыма
 osm2pgsql --append --slim \
     --database gis \
@@ -51,7 +51,6 @@ osm2pgsql --append --slim \
     --number-processes 4 \
     --hstore \
     /osmpbf/far-eastern-fed-district-latest.osm.pbf
-```
 
 
 ## 4. Параметры команды

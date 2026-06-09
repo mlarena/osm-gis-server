@@ -6,32 +6,33 @@
 
 Обновите репозитории и установите базовый стек:
 
-```bash
+
 apt update
-apt install -y postgresql-15 postgis postgresql-15-postgis-3 osm2pgsql osmium-tool curl wget htop iotop
+apt install -y postgresql-15 postgis postgresql-15-postgis-3 osm2pgsql osmium-tool curl wget htop iotop sudo
 apt install -y postgresql postgresql-contrib postgis osm2pgsql osmium-tool wget unzip ? 
-```
+
 
 ## 2. Настройка пользователя PostgreSQL
 
 Установите пароль для системного пользователя:
 
-```bash
+
 sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '12345678';"
-```
+
 
 ## 3. Создание базы данных
 
 Зайдите под пользователем `postgres` и создайте базу `gis` с необходимыми расширениями:
 
-```bash
-su - postgres
-psql -c "CREATE DATABASE gis;"
-psql -d gis -c "CREATE EXTENSION postgis;"
-psql -d gis -c "CREATE EXTENSION postgis_topology;"
-psql -d gis -c "CREATE EXTENSION hstore;"
-exit
-```
+
+psql -U postgres -h localhost -d postgres
+
+CREATE DATABASE gis;
+\c gis
+CREATE EXTENSION postgis;
+CREATE EXTENSION postgis_topology;
+CREATE EXTENSION hstore;
+
 
 ## 4. Тюнинг PostgreSQL
 
@@ -42,7 +43,9 @@ exit
 
 Скопируйте его в директорию конфигурации PostgreSQL:
 
-```bash
-cp configs/99-osm-tuning-large.conf /etc/postgresql/15/main/conf.d/99-osm-tuning.conf
+
+cp ./99-osm-tuning-large.conf /etc/postgresql/15/main/conf.d/99-osm-tuning.conf
 systemctl restart postgresql
-```
+
+
+посмотреть расшиения на базе и примененные  настрорйки

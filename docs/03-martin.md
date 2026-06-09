@@ -6,7 +6,7 @@
 
 Для установки на Debian/Ubuntu скачайте последний релиз и установите пакет:
 
-```bash
+
 # Скачивание последнего релиза
 wget https://github.com/maplibre/martin/releases/latest/download/debian-x86_64.deb
 
@@ -21,17 +21,17 @@ rm ./debian-x86_64.deb
 
 # Проверьте установку
 martin --version
-```
+
 
 ## 2. Запуск
 
 Для работы Martin требуется строка подключения к базе данных PostgreSQL.
 
-```bash
+
 # Пример запуска с подключением к базе gis
 export PGPASSWORD='12345678'
 martin postgresql://postgres@localhost:5432/gis
-```
+
 
  в новом терминале
  Проверьте работу сервера

@@ -40,3 +40,5 @@ osm2pgsql --append \
           --cache 8000 \
           --number-processes 4 \
           far-eastern-fed-district-260407.osm.pbf
+
+          maptiler.com/on-prem-datasets/dataset/terrain-quantized-mesh/-???

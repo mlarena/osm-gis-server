@@ -2,6 +2,10 @@ scp E:\_Maps\osm\crimean-fed-district-260407.osm.pbf devuser@192.168.192.156:/os
 scp E:\_Maps\osm\far-eastern-fed-district-260407.osm.pbf devuser@192.168.192.156:/osmpbf
 scp E:\_Maps\osm\kaliningrad-260407.osm.pbf devuser@192.168.192.156:/osmpbf
 
+scp D:\tmp\monaco-260605.osm.pbf
+
+scp  D:\tmp\monaco-260605.osm.pbf devuser@192.168.19.153:/osmpbf
+
 # 1. Установите PostGIS 
 sudo apt update
 sudo apt install -y postgresql postgresql-contrib postgis osm2pgsql osmium-tool wget unzip
