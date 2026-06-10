@@ -9,7 +9,7 @@
 
 apt update
 apt install -y postgresql-15 postgis postgresql-15-postgis-3 osm2pgsql osmium-tool curl wget htop iotop sudo
-apt install -y postgresql postgresql-contrib postgis osm2pgsql osmium-tool wget unzip ? 
+apt install -y postgresql postgresql-contrib postgis osm2pgsql osmium-tool wget unzip htop iotop sudo? 
 
 
 ## 2. Настройка пользователя PostgreSQL
