@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Карта 4 - Интерактивная (полная карта с попапами)</title>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            padding: 12px;
+            font-family: sans-serif;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 160px;
+        }
+        .controls h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+        .controls label {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+            cursor: pointer;
+        }
+        .controls input {
+            margin-right: 8px;
+        }
+        
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            max-width: 320px;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: sans-serif;
+            font-size: 12px;
+            z-index: 1000;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        .info-panel strong {
+            color: #ffaa66;
+        }
+        
+        .popup-content {
+            font-family: sans-serif;
+            font-size: 12px;
+            max-width: 260px;
+        }
+        .popup-content .title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #2277cc;
+        }
+        .popup-content .attr {
+            margin: 3px 0;
+        }
+        .popup-content .attr-name {
+            font-weight: 600;
+            color: #cc6600;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="controls">
+        <h4>🎛️ Слои карты</h4>
+        <label><input type="checkbox" id="toggle-polygons" checked> 🏢 Полигоны (здания)</label>
+        <label><input type="checkbox" id="toggle-lines" checked> 🛣️ Линии (дороги)</label>
+        <label><input type="checkbox" id="toggle-points" checked> 📍 Точки (POI)</label>
+        <hr style="margin: 8px 0;">
+        <div style="font-size: 10px; color: #666;">✨ Кликни по объекту → информация</div>
+    </div>
+    
+    <div class="info-panel" id="infoPanel">
+        <strong>📌 Интерактивная карта</strong><br>
+        Фон: OpenStreetMap (вода, земля, рельеф)<br>
+        Поверх: ваши данные OSM из PostgreSQL<br>
+        👆 Кликни по любому объекту
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+
+    <script>
+        const SERVER_URL = 'http://192.168.192.156:3000';
+        
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    // Растровый фон OSM (вода, земля, строения видны)
+                    'osm-raster': {
+                        type: 'raster',
+                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '© OpenStreetMap'
+                    },
+                    'polygons': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_polygon/{z}/{x}/{y}`]
+                    },
+                    'lines': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_line/{z}/{x}/{y}`]
+                    },
+                    'points': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_point/{z}/{x}/{y}`]
+                    }
+                },
+                layers: [
+                    // Фоновый слой (растр)
+                    {
+                        id: 'background',
+                        type: 'raster',
+                        source: 'osm-raster'
+                    },
+                    // Полигоны (здания, парки)
+                    {
+                        id: 'polygons-layer',
+                        type: 'fill',
+                        source: 'polygons',
+                        'source-layer': 'planet_osm_polygon',
+                        paint: {
+                            'fill-color': '#ffcc44',
+                            'fill-opacity': 0.5,
+                            'fill-outline-color': '#ccaa33'
+                        },
+                        minzoom: 12
+                    },
+                    // Линии (дороги, реки)
+                    {
+                        id: 'lines-layer',
+                        type: 'line',
+                        source: 'lines',
+                        'source-layer': 'planet_osm_line',
+                        paint: {
+                            'line-color': '#ff6600',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 14, 3, 18, 5],
+                            'line-opacity': 0.9
+                        }
+                    },
+                    // Точки
+                    {
+                        id: 'points-layer',
+                        type: 'circle',
+                        source: 'points',
+                        'source-layer': 'planet_osm_point',
+                        paint: {
+                            'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 8, 19, 12],
+                            'circle-color': '#ff3366',
+                            'circle-opacity': 0.85,
+                            'circle-stroke-width': 1.5,
+                            'circle-stroke-color': '#ffffff'
+                        },
+                        minzoom: 13
+                    }
+                ]
+            },
+            center: [20.5, 54.7],
+            zoom: 13
+        });
+
+        map.addControl(new maplibregl.NavigationControl());
+        map.addControl(new maplibregl.ScaleControl());
+
+        // Переключение слоёв
+        document.getElementById('toggle-polygons').addEventListener('change', (e) => {
+            map.setLayoutProperty('polygons-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+        });
+        document.getElementById('toggle-lines').addEventListener('change', (e) => {
+            map.setLayoutProperty('lines-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+        });
+        document.getElementById('toggle-points').addEventListener('change', (e) => {
+            map.setLayoutProperty('points-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+        });
+
+        // Курсор при наведении на кликабельные объекты
+        ['polygons-layer', 'lines-layer', 'points-layer'].forEach(layerId => {
+            map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+        });
+
+        // Попап при клике
+        const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '280px' });
+
+        map.on('click', (e) => {
+            const features = map.queryRenderedFeatures(e.point, {
+                layers: ['polygons-layer', 'lines-layer', 'points-layer']
+            });
+            
+            if (features.length === 0) {
+                popup.remove();
+                return;
+            }
+            
+            const feature = features[0];
+            const props = feature.properties;
+            const layerName = feature.layer.id;
+            
+            let icon = '';
+            if (layerName === 'polygons-layer') icon = '🏢';
+            else if (layerName === 'points-layer') icon = '📍';
+            else icon = '🛣️';
+            
+            let html = `<div class="popup-content">
+                <div class="title">${icon} ${layerName.replace('-layer', '')}</div>`;
+            
+            const importantFields = ['name', 'highway', 'railway', 'waterway', 'amenity', 
+                                      'shop', 'tourism', 'leisure', 'landuse', 'building', 
+                                      'natural', 'place', 'addr:street', 'operator'];
+            
+            let hasInfo = false;
+            importantFields.forEach(field => {
+                if (props[field] && props[field] !== '') {
+                    html += `<div class="attr"><span class="attr-name">${field}:</span> ${props[field]}</div>`;
+                    hasInfo = true;
+                }
+            });
+            
+            if (!hasInfo) {
+                html += '<div class="attr">Нет дополнительных атрибутов</div>';
+            }
+            
+            html += `<div class="attr" style="margin-top:6px; font-size:10px; color:#888;">osm_id: ${props.osm_id || '—'}</div>`;
+            html += `</div>`;
+            
+            popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+        });
+        
+        map.on('load', () => {
+            console.log('✅ Карта загружена, фоновый слой OSM активен');
+        });
+    </script>
+</body>
+</html>

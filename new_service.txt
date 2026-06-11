@@ -1,0 +1,22 @@
+[Unit]
+Description=Martin Tile Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/osmpbf
+Environment="DATABASE_URL=postgresql://postgres:12345678@localhost:5432/gis"
+ExecStart=/usr/bin/martin \
+  --connection-string "$DATABASE_URL" \
+  --font-dir /var/lib/martin/fonts \
+  --sprite-dir /var/lib/martin/sprites \
+  --listen 0.0.0.0:3000 \
+  --webui enable-for-all
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

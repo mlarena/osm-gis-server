@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Карта 2 - Линии + Полигоны (здания, парки)</title>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: sans-serif;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        .legend h3 { margin: 0 0 8px 0; font-size: 14px; }
+        .legend-item { display: flex; align-items: center; margin: 5px 0; }
+        .legend-color { width: 20px; height: 12px; margin-right: 8px; }
+        .legend-color.line { background: #ff6600; }
+        .legend-color.polygon { background: #66cc66; }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="map"></div>
+    <div class="legend">
+        <h3>📖 Легенда</h3>
+        <div class="legend-item">
+            <div class="legend-color line"></div>
+            <span>Линии (дороги, реки)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color polygon"></div>
+            <span>Полигоны (здания, леса, парки)</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+
+    <script>
+        const SERVER_URL = 'http://192.168.192.156:3000';
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'polygons': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_polygon/{z}/{x}/{y}`]
+                    },
+                    'lines': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_line/{z}/{x}/{y}`]
+                    }
+                },
+                layers: [
+                    {
+                        id: 'background',
+                        type: 'background',
+                        paint: {
+                            'background-color': '#e8f0e8'
+                        }
+                    },
+                    {
+                        id: 'polygons-layer',
+                        type: 'fill',
+                        source: 'polygons',
+                        'source-layer': 'planet_osm_polygon',
+                        paint: {
+                            'fill-color': '#66cc66',
+                            'fill-opacity': 0.5,
+                            'fill-outline-color': '#339933'
+                        }
+                    },
+                    {
+                        id: 'lines-layer',
+                        type: 'line',
+                        source: 'lines',
+                        'source-layer': 'planet_osm_line',
+                        paint: {
+                            'line-color': '#ff6600',
+                            'line-width': 2,
+                            'line-opacity': 0.9
+                        }
+                    }
+                ]
+            },
+            center: [20.5, 54.7],
+            zoom: 12
+        });
+
+        map.addControl(new maplibregl.NavigationControl());
+    </script>
+</body>
+</html>

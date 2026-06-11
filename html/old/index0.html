@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Martin Tiles - Карта России (тест)</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        /* Панель управления слоями */
+        .layer-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            min-width: 180px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .layer-control h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .layer-control h4 {
+            margin: 8px 0 4px 0;
+            font-size: 13px;
+            color: #666;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .layer-control label {
+            display: block;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+        
+        .layer-control input {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        
+        .layer-control .note {
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }
+        
+        @media (max-width: 600px) {
+            .layer-control {
+                top: auto;
+                bottom: 10px;
+                right: 10px;
+                max-height: 50vh;
+                font-size: 12px;
+                padding: 8px;
+                min-width: 150px;
+            }
+            .layer-control h3 { font-size: 14px; }
+            .layer-control h4 { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Панель управления слоями -->
+    <div class="layer-control">
+        <h3>🗺️ Слои карты</h3>
+        <label style="color:#000; font-weight:bold;">
+            <input type="checkbox" id="toggle-all" checked> Все слои
+        </label>
+        <hr style="margin:5px 0;">
+        
+        <h4>🛣️ Дороги</h4>
+        <label style="color:#ff0000;"><input type="checkbox" class="layer-toggle" data-layer="highway-motorway" checked> Магистрали (motorway)</label>
+        <label style="color:#ff6600;"><input type="checkbox" class="layer-toggle" data-layer="highway-primary" checked> Главные (primary)</label>
+        <label style="color:#ffcc00;"><input type="checkbox" class="layer-toggle" data-layer="highway-secondary" checked> Второстепенные (secondary)</label>
+        <label style="color:#cccccc;"><input type="checkbox" class="layer-toggle" data-layer="highway-residential" checked> Жилые (residential)</label>
+        
+        <h4>🏢 Здания</h4>
+        <label style="color:#ffccaa;"><input type="checkbox" class="layer-toggle" data-layer="buildings" checked> Здания</label>
+        
+        <h4>🌲 Природа</h4>
+        <label style="color:#88ff88;"><input type="checkbox" class="layer-toggle" data-layer="forest" checked> Леса</label>
+        <label style="color:#88ccff;"><input type="checkbox" class="layer-toggle" data-layer="water" checked> Вода</label>
+        
+        <h4>📝 Названия</h4>
+        <label><input type="checkbox" class="layer-toggle" data-layer="place-name" checked> Города и сёла</label>
+        <label><input type="checkbox" class="layer-toggle" data-layer="road-name" checked> Названия дорог</label>
+        <label><input type="checkbox" class="layer-toggle" data-layer="poi-name" checked> POI (точки интереса)</label>
+        
+        <div class="note">
+            ⚡ Названия видны при масштабе 10+
+        </div>
+    </div>
+
+    <script>
+        // Замените IP на ваш сервер
+        const SERVER_URL = 'http://192.168.192.156:3000';
+        
+        var map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'osm-lines': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_line/{z}/{x}/{y}.pbf`]
+                    },
+                    'osm-polygons': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_polygon/{z}/{x}/{y}.pbf`]
+                    },
+                    'osm-points': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_point/{z}/{x}/{y}.pbf`]
+                    }
+                },
+                layers: [
+                    // ========== ДОРОГИ ==========
+                    {
+                        id: 'highway-motorway',
+                        type: 'line',
+                        source: 'osm-lines',
+                        'source-layer': 'planet_osm_line',
+                        filter: ['==', 'highway', 'motorway'],
+                        paint: { 'line-color': '#ff0000', 'line-width': 4 }
+                    },
+                    {
+                        id: 'highway-primary',
+                        type: 'line',
+                        source: 'osm-lines',
+                        'source-layer': 'planet_osm_line',
+                        filter: ['==', 'highway', 'primary'],
+                        paint: { 'line-color': '#ff6600', 'line-width': 3 }
+                    },
+                    {
+                        id: 'highway-secondary',
+                        type: 'line',
+                        source: 'osm-lines',
+                        'source-layer': 'planet_osm_line',
+                        filter: ['==', 'highway', 'secondary'],
+                        paint: { 'line-color': '#ffcc00', 'line-width': 2 }
+                    },
+                    {
+                        id: 'highway-residential',
+                        type: 'line',
+                        source: 'osm-lines',
+                        'source-layer': 'planet_osm_line',
+                        filter: ['==', 'highway', 'residential'],
+                        paint: { 'line-color': '#cccccc', 'line-width': 1.5 }
+                    },
+                    
+                    // ========== ЗДАНИЯ ==========
+                    {
+                        id: 'buildings',
+                        type: 'fill',
+                        source: 'osm-polygons',
+                        'source-layer': 'planet_osm_polygon',
+                        filter: ['==', 'building', 'yes'],
+                        paint: { 'fill-color': '#ffccaa', 'fill-outline-color': '#cc8866' }
+                    },
+                    
+                    // ========== ПРИРОДА ==========
+                    {
+                        id: 'forest',
+                        type: 'fill',
+                        source: 'osm-polygons',
+                        'source-layer': 'planet_osm_polygon',
+                        filter: ['==', 'landuse', 'forest'],
+                        paint: { 'fill-color': '#88ff88', 'fill-opacity': 0.7 }
+                    },
+                    {
+                        id: 'water',
+                        type: 'fill',
+                        source: 'osm-polygons',
+                        'source-layer': 'planet_osm_polygon',
+                        filter: ['==', 'natural', 'water'],
+                        paint: { 'fill-color': '#88ccff', 'fill-opacity': 0.8 }
+                    },
+                    
+                    // ========== НАЗВАНИЯ (ТЕКСТ) ==========
+                    // Названия городов и сёл
+                    {
+                        id: 'place-name',
+                        type: 'symbol',
+                        source: 'osm-points',
+                        'source-layer': 'planet_osm_point',
+                        filter: ['in', 'place', 'city', 'town', 'village', 'hamlet'],
+                        layout: {
+                            'text-field': ['get', 'name'],
+                            'text-font': ['Noto Sans Regular'],
+                            'text-size': 12,
+                            'text-anchor': 'top',
+                            'text-offset': [0, 0.5],
+                            'text-allow-overlap': false,
+                            'text-ignore-placement': false
+                        },
+                        paint: {
+                            'text-color': '#333333',
+                            'text-halo-color': '#ffffff',
+                            'text-halo-width': 2
+                        }
+                    },
+                    // Названия дорог (вдоль линии)
+                    {
+                        id: 'road-name',
+                        type: 'symbol',
+                        source: 'osm-lines',
+                        'source-layer': 'planet_osm_line',
+                        filter: ['in', 'highway', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary'],
+                        layout: {
+                            'text-field': ['get', 'name'],
+                            'text-font': ['Noto Sans Regular'],
+                            'text-size': 11,
+                            'symbol-placement': 'line',
+                            'symbol-spacing': 400,
+                            'text-rotation-alignment': 'map',
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': '#444444',
+                            'text-halo-color': '#ffffff',
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    // Названия точек интереса (POI)
+                    {
+                        id: 'poi-name',
+                        type: 'symbol',
+                        source: 'osm-points',
+                        'source-layer': 'planet_osm_point',
+                        filter: ['has', 'name'],
+                        layout: {
+                            'text-field': ['get', 'name'],
+                            'text-font': ['Noto Sans Regular'],
+                            'text-size': 10,
+                            'text-anchor': 'top',
+                            'text-offset': [0, 0.8],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': '#666666',
+                            'text-halo-color': '#ffffff',
+                            'text-halo-width': 1
+                        }
+                    }
+                ]
+            },
+            center: [20.5, 54.7],
+            zoom: 12
+        });
+        
+        // ========== ЛОГИКА ВКЛЮЧЕНИЯ/ВЫКЛЮЧЕНИЯ СЛОЁВ ==========
+        
+        // Список всех слоёв, которые можно переключать
+        const toggleableLayers = [
+            'highway-motorway',
+            'highway-primary', 
+            'highway-secondary',
+            'highway-residential',
+            'buildings',
+            'forest',
+            'water',
+            'place-name',
+            'road-name',
+            'poi-name'
+        ];
+        
+        // Функция для обновления видимости слоя
+        function setLayerVisibility(layerId, visible) {
+            if (map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+            }
+        }
+        
+        // Ждём загрузки карты перед настройкой переключателей
+        map.on('load', function() {
+            // Настройка всех переключателей
+            document.querySelectorAll('.layer-toggle').forEach(checkbox => {
+                const layerId = checkbox.dataset.layer;
+                if (layerId) {
+                    // Устанавливаем начальное состояние (по умолчанию видимо)
+                    setLayerVisibility(layerId, checkbox.checked);
+                    
+                    // Добавляем обработчик изменения
+                    checkbox.addEventListener('change', function() {
+                        setLayerVisibility(layerId, this.checked);
+                        updateToggleAllState();
+                    });
+                }
+            });
+            
+            // Кнопка "Все слои"
+            const toggleAllCheckbox = document.getElementById('toggle-all');
+            if (toggleAllCheckbox) {
+                toggleAllCheckbox.addEventListener('change', function() {
+                    const isChecked = this.checked;
+                    document.querySelectorAll('.layer-toggle').forEach(checkbox => {
+                        if (checkbox.checked !== isChecked) {
+                            checkbox.checked = isChecked;
+                            const layerId = checkbox.dataset.layer;
+                            if (layerId) {
+                                setLayerVisibility(layerId, isChecked);
+                            }
+                        }
+                    });
+                });
+            }
+        });
+        
+        // Функция обновления состояния чекбокса "Все слои"
+        function updateToggleAllState() {
+            const allCheckboxes = document.querySelectorAll('.layer-toggle');
+            const checkedCheckboxes = document.querySelectorAll('.layer-toggle:checked');
+            const toggleAllCheckbox = document.getElementById('toggle-all');
+            
+            if (toggleAllCheckbox) {
+                if (checkedCheckboxes.length === 0) {
+                    toggleAllCheckbox.checked = false;
+                    toggleAllCheckbox.indeterminate = false;
+                } else if (checkedCheckboxes.length === allCheckboxes.length) {
+                    toggleAllCheckbox.checked = true;
+                    toggleAllCheckbox.indeterminate = false;
+                } else {
+                    toggleAllCheckbox.indeterminate = true;
+                }
+            }
+        }
+        
+        // Небольшой хинт в консоль
+        console.log('Карта загружена. Используйте панель справа для управления слоями.');
+    </script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Карта России — Martin + готовые стили</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        .style-switcher {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 8px;
+            z-index: 1000;
+            display: flex;
+            gap: 8px;
+            backdrop-filter: blur(8px);
+        }
+        
+        .style-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .style-btn:hover { background: #555; }
+        .style-btn.active { background: #007bff; }
+        
+        .layer-control {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1000;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            backdrop-filter: blur(8px);
+        }
+        
+        .layer-control h4 { margin: 0 0 5px 0; }
+        .layer-control label { display: block; margin: 4px 0; cursor: pointer; }
+        .layer-control input { margin-right: 6px; }
+        
+        .coord-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.6);
+            color: #0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="style-switcher">
+        <button class="style-btn active" data-style="bright">🌞 Bright</button>
+        <button class="style-btn" data-style="positron">⚪ Positron</button>
+        <button class="style-btn" data-style="dark">🌙 Dark Matter</button>
+    </div>
+    
+    <div class="layer-control">
+        <h4>🗺️ Слои (Martin)</h4>
+        <label><input type="checkbox" id="toggle-roads" checked> 🛣️ Дороги</label>
+        <label><input type="checkbox" id="toggle-buildings" checked> 🏢 Здания</label>
+        <label><input type="checkbox" id="toggle-water" checked> 💧 Вода</label>
+        <label><input type="checkbox" id="toggle-landuse" checked> 🌲 Парки/леса</label>
+    </div>
+    
+    <div class="coord-panel" id="coordPanel">📍 --</div>
+
+    <script>
+        const SERVER_URL = 'http://192.168.192.156:3000';
+        
+        // Пути к локальным стилям
+        const STYLES = {
+            bright: 'jsonstyle/osm-bright-gl-style-style-cdn.json',
+            positron: 'jsonstyle/positron-gl-style-style-cdn.json',
+            dark: 'jsonstyle/dark-matter-gl-style-style-cdn.json'
+        };
+        
+        let map;
+        let currentMartinLayers = [];
+        
+        // ID слоёв Martin
+        const MARTIN_LAYERS = ['martin-roads', 'martin-buildings', 'martin-water', 'martin-landuse'];
+        
+        // Функция добавления слоёв Martin
+        function addMartinLayers(mapInstance) {
+            // Удаляем старые слои
+            MARTIN_LAYERS.forEach(id => {
+                if (mapInstance.getLayer(id)) mapInstance.removeLayer(id);
+            });
+            
+            // Добавляем источники если их нет
+            if (!mapInstance.getSource('martin-lines')) {
+                mapInstance.addSource('martin-lines', {
+                    type: 'vector',
+                    tiles: [`${SERVER_URL}/planet_osm_line/{z}/{x}/{y}.pbf`]
+                });
+            }
+            if (!mapInstance.getSource('martin-polygons')) {
+                mapInstance.addSource('martin-polygons', {
+                    type: 'vector',
+                    tiles: [`${SERVER_URL}/planet_osm_polygon/{z}/{x}/{y}.pbf`]
+                });
+            }
+            
+            // Дороги
+            mapInstance.addLayer({
+                id: 'martin-roads',
+                type: 'line',
+                source: 'martin-lines',
+                'source-layer': 'planet_osm_line',
+                filter: ['in', 'highway', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential'],
+                paint: {
+                    'line-color': [
+                        'match', ['get', 'highway'],
+                        'motorway', '#ff4444',
+                        'trunk', '#ff6644',
+                        'primary', '#ff8844',
+                        'secondary', '#ffaa44',
+                        '#cccccc'
+                    ],
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 18, 5],
+                    'line-opacity': 0.85
+                }
+            });
+            
+            // Здания
+            mapInstance.addLayer({
+                id: 'martin-buildings',
+                type: 'fill',
+                source: 'martin-polygons',
+                'source-layer': 'planet_osm_polygon',
+                filter: ['==', 'building', 'yes'],
+                paint: {
+                    'fill-color': '#d4a574',
+                    'fill-opacity': 0.6,
+                    'fill-outline-color': '#a07050'
+                }
+            });
+            
+            // Вода
+            mapInstance.addLayer({
+                id: 'martin-water',
+                type: 'fill',
+                source: 'martin-polygons',
+                'source-layer': 'planet_osm_polygon',
+                filter: ['==', 'natural', 'water'],
+                paint: { 'fill-color': '#3399ff', 'fill-opacity': 0.5 }
+            });
+            
+            // Парки/леса
+            mapInstance.addLayer({
+                id: 'martin-landuse',
+                type: 'fill',
+                source: 'martin-polygons',
+                'source-layer': 'planet_osm_polygon',
+                filter: ['in', 'landuse', 'forest', 'park', 'grass', 'meadow'],
+                paint: { 'fill-color': '#66cc66', 'fill-opacity': 0.4 }
+            });
+            
+            // Применяем видимость
+            updateMartinVisibility(mapInstance);
+        }
+        
+        function updateMartinVisibility(mapInstance) {
+            const visible = {
+                'martin-roads': document.getElementById('toggle-roads').checked,
+                'martin-buildings': document.getElementById('toggle-buildings').checked,
+                'martin-water': document.getElementById('toggle-water').checked,
+                'martin-landuse': document.getElementById('toggle-landuse').checked
+            };
+            
+            for (const [id, isVisible] of Object.entries(visible)) {
+                if (mapInstance.getLayer(id)) {
+                    mapInstance.setLayoutProperty(id, 'visibility', isVisible ? 'visible' : 'none');
+                }
+            }
+        }
+        
+        // Загрузка стиля с корректной подменой источника
+        async function loadStyle(styleName) {
+            const styleUrl = STYLES[styleName];
+            if (!styleUrl) return;
+            
+            console.log(`Загрузка стиля: ${styleName}`);
+            
+            try {
+                const response = await fetch(styleUrl);
+                const originalStyle = await response.json();
+                
+                // СОЗДАЁМ НОВЫЙ СТИЛЬ с правильным источником
+                const newStyle = {
+                    version: originalStyle.version,
+                    name: originalStyle.name,
+                    sprite: originalStyle.sprite,
+                    glyphs: originalStyle.glyphs,
+                    sources: {
+                        // ЕДИНСТВЕННЫЙ источник — называем его openmaptiles (как ожидают слои)
+                        'openmaptiles': {
+                            type: 'vector',
+                            tiles: [`${SERVER_URL}/planet_osm_line/{z}/{x}/{y}.pbf`]
+                        }
+                    },
+                    layers: []
+                };
+                
+                // Копируем все слои из оригинального стиля
+                // Но меняем в них source на 'openmaptiles' (если было другое)
+                for (const layer of originalStyle.layers) {
+                    const newLayer = { ...layer };
+                    // Перенаправляем все слои на наш источник
+                    if (newLayer.source) {
+                        newLayer.source = 'openmaptiles';
+                    }
+                    newStyle.layers.push(newLayer);
+                }
+                
+                // Добавляем слои с границами и фоном если их нет
+                const hasBackground = newStyle.layers.some(l => l.id === 'background');
+                if (!hasBackground) {
+                    newStyle.layers.unshift({
+                        id: 'background',
+                        type: 'background',
+                        paint: { 'background-color': '#f8f4f0' }
+                    });
+                }
+                
+                // Применяем стиль к карте
+                map.setStyle(newStyle);
+                
+                // После применения стиля добавляем слои Martin поверх
+                map.once('styledata', () => {
+                    console.log(`✅ Стиль ${styleName} применён`);
+                    addMartinLayers(map);
+                });
+                
+                // Обновляем активную кнопку
+                document.querySelectorAll('.style-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.style === styleName);
+                });
+                
+            } catch (error) {
+                console.error('Ошибка загрузки стиля:', error);
+            }
+        }
+        
+        // Инициализация
+        function initMap() {
+            map = new maplibregl.Map({
+                container: 'map',
+                center: [37.6176, 55.7558],
+                zoom: 12,
+                style: { version: 8, sources: {}, layers: [] }
+            });
+            
+            map.addControl(new maplibregl.NavigationControl(), 'top-left');
+            
+            map.on('load', () => {
+                loadStyle('bright');
+            });
+            
+            // Координаты
+            map.on('mousemove', (e) => {
+                document.getElementById('coordPanel').innerHTML = 
+                    `📍 ${e.lngLat.lng.toFixed(4)}°, ${e.lngLat.lat.toFixed(4)}° | зум: ${map.getZoom().toFixed(1)}`;
+            });
+            
+            // Клик
+            map.on('click', (e) => {
+                const features = map.queryRenderedFeatures(e.point);
+                if (features.length > 0) {
+                    const props = features[0].properties;
+                    let html = `<div><b>${props.name || 'Объект'}</b><br>`;
+                    if (props.highway) html += `Дорога: ${props.highway}<br>`;
+                    if (props.building) html += `Здание<br>`;
+                    html += `</div>`;
+                    new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(map);
+                }
+            });
+            
+            // Переключение стилей
+            document.querySelectorAll('.style-btn').forEach(btn => {
+                btn.addEventListener('click', () => loadStyle(btn.dataset.style));
+            });
+            
+            // Переключение слоёв Martin
+            ['toggle-roads', 'toggle-buildings', 'toggle-water', 'toggle-landuse'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    updateMartinVisibility(map);
+                });
+            });
+        }
+        
+        initMap();
+    </script>
+</body>
+</html>

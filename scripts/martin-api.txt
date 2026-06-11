@@ -1,0 +1,10 @@
+Проверка здоровья сервера
+curl http://localhost:3000/health
+
+Веб интерфейс
+http://localhost:3000/
+
+curl http://localhost:3000/catalog
+192.168.192.156
+
+martin postgresql://postgres:12345678@localhost:5432/gis --save-config martin-config.yaml

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Карта 3 - Полная карта (линии + полигоны + точки)</title>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-family: sans-serif;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 150px;
+        }
+        .legend h3 { margin: 0 0 10px 0; font-size: 14px; }
+        .legend-item { display: flex; align-items: center; margin: 6px 0; }
+        .legend-color { width: 24px; height: 12px; margin-right: 10px; }
+        .legend-color.line { background: #ff6600; }
+        .legend-color.polygon { background: #3399ff; opacity: 0.5; }
+        .legend-color.point { width: 10px; height: 10px; border-radius: 50%; background: #ff3366; }
+        .status {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            color: #0f0;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="status">
+        🟢 Martin: ${SERVER_URL}
+    </div>
+    <div class="legend">
+        <h3>🗺️ Легенда</h3>
+        <div class="legend-item">
+            <div class="legend-color polygon"></div>
+            <span>Полигоны (здания, участки)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color line"></div>
+            <span>Линии (дороги, реки)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color point"></div>
+            <span>Точки (POI, магазины)</span>
+        </div>
+        <hr style="margin: 8px 0; border-color: #555;">
+        <div style="font-size: 10px; color: #aaa;">
+            zoom: <span id="zoomValue">-</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+
+    <script>
+        const SERVER_URL = 'http://192.168.192.156:3000';
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'polygons': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_polygon/{z}/{x}/{y}`]
+                    },
+                    'lines': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_line/{z}/{x}/{y}`]
+                    },
+                    'points': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_point/{z}/{x}/{y}`]
+                    }
+                },
+                layers: [
+                    // Полигоны (фон)
+                    {
+                        id: 'polygons-fill',
+                        type: 'fill',
+                        source: 'polygons',
+                        'source-layer': 'planet_osm_polygon',
+                        paint: {
+                            'fill-color': '#3399ff',
+                            'fill-opacity': 0.3,
+                            'fill-outline-color': '#2277cc'
+                        }
+                    },
+                    // Линии (с утолщением при зуме)
+                    {
+                        id: 'lines-roads',
+                        type: 'line',
+                        source: 'lines',
+                        'source-layer': 'planet_osm_line',
+                        paint: {
+                            'line-color': '#ff8800',
+                            'line-width': [
+                                'interpolate', ['linear'], ['zoom'],
+                                8, 1,
+                                12, 2,
+                                16, 4
+                            ],
+                            'line-opacity': 0.85
+                        }
+                    },
+                    // Точки (с увеличением радиуса при зуме)
+                    {
+                        id: 'points-poi',
+                        type: 'circle',
+                        source: 'points',
+                        'source-layer': 'planet_osm_point',
+                        paint: {
+                            'circle-radius': [
+                                'interpolate', ['linear'], ['zoom'],
+                                10, 3,
+                                14, 6,
+                                18, 10
+                            ],
+                            'circle-color': '#ff3366',
+                            'circle-opacity': 0.8,
+                            'circle-stroke-width': 1,
+                            'circle-stroke-color': '#ffffff'
+                        },
+                        minzoom: 10
+                    }
+                ]
+            },
+            center: [20.5, 54.7],
+            zoom: 12
+        });
+
+        map.addControl(new maplibregl.NavigationControl());
+        map.addControl(new maplibregl.ScaleControl());
+
+        // Отображение текущего зума
+        map.on('zoom', () => {
+            document.getElementById('zoomValue').textContent = map.getZoom().toFixed(1);
+        });
+    </script>
+</body>
+</html>

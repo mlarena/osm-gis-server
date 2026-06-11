@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Карта России — переключение стилей</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        /* Панель переключения стилей */
+        .style-switcher {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 8px;
+            z-index: 1000;
+            display: flex;
+            gap: 8px;
+            backdrop-filter: blur(8px);
+            font-family: Arial, sans-serif;
+        }
+        
+        .style-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .style-btn:hover {
+            background: #555;
+        }
+        
+        .style-btn.active {
+            background: #007bff;
+            box-shadow: 0 0 8px rgba(0,123,255,0.5);
+        }
+        
+        .layer-control {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: white;
+            backdrop-filter: blur(8px);
+            max-width: 180px;
+        }
+        
+        .layer-control h4 {
+            margin: 0 0 5px 0;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .layer-control label {
+            display: block;
+            margin: 4px 0;
+            cursor: pointer;
+        }
+        
+        .layer-control input {
+            margin-right: 6px;
+        }
+        
+        .coord-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.6);
+            color: #0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+            z-index: 1000;
+        }
+        
+        @media (max-width: 600px) {
+            .style-switcher { top: auto; bottom: 10px; right: 10px; }
+            .layer-control { bottom: 50px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Панель переключения стилей -->
+    <div class="style-switcher">
+        <button class="style-btn" data-style="bright">🌞 Bright</button>
+        <button class="style-btn" data-style="positron">⚪ Positron</button>
+        <button class="style-btn" data-style="dark">🌙 Dark Matter</button>
+    </div>
+    
+    <!-- Панель управления слоями (ваши данные из Martin) -->
+    <div class="layer-control">
+        <h4>📊 Ваши данные (Martin)</h4>
+        <label><input type="checkbox" id="toggle-buildings" checked> 🏢 Здания</label>
+        <label><input type="checkbox" id="toggle-roads" checked> 🛣️ Дороги</label>
+        <label><input type="checkbox" id="toggle-water" checked> 💧 Вода</label>
+        <label><input type="checkbox" id="toggle-landuse" checked> 🌲 Парки/леса</label>
+        <hr style="margin:5px 0; border-color:#444;">
+        <label style="color:#aaa;"><input type="checkbox" id="toggle-labels" checked> 📝 Названия (POI)</label>
+    </div>
+    
+    <div class="coord-panel" id="coordPanel">📍 --</div>
+
+    <script>
+        const SERVER_URL = 'http://192.168.192.156:3000';
+        
+        // Пути к локальным стилям (относительные или абсолютные)
+        const STYLES = {
+            bright: 'jsonstyle/osm-bright-gl-style-style-cdn.json',
+            positron: 'jsonstyle/positron-gl-style-style-cdn.json',
+            dark: 'jsonstyle/dark-matter-gl-style-style-cdn.json'
+        };
+        
+        let currentMap = null;
+        let currentStyle = 'bright';
+        
+        // ID слоёв, которые мы добавим поверх фонового стиля
+        const MARTIN_LAYERS = ['buildings-layer', 'roads-layer', 'water-layer', 'landuse-layer', 'poi-labels'];
+        
+        // Функция добавления ваших данных из Martin поверх любого стиля
+        function addMartinLayers(map) {
+            if (!map.getSource('osm-lines')) {
+                map.addSource('osm-lines', {
+                    type: 'vector',
+                    tiles: [`${SERVER_URL}/planet_osm_line/{z}/{x}/{y}.pbf`]
+                });
+            }
+            if (!map.getSource('osm-polygons')) {
+                map.addSource('osm-polygons', {
+                    type: 'vector',
+                    tiles: [`${SERVER_URL}/planet_osm_polygon/{z}/{x}/{y}.pbf`]
+                });
+            }
+            if (!map.getSource('osm-points')) {
+                map.addSource('osm-points', {
+                    type: 'vector',
+                    tiles: [`${SERVER_URL}/planet_osm_point/{z}/{x}/{y}.pbf`]
+                });
+            }
+            
+            // Удаляем старые слои, если есть
+            MARTIN_LAYERS.forEach(layerId => {
+                if (map.getLayer(layerId)) map.removeLayer(layerId);
+            });
+            
+            // Здания
+            map.addLayer({
+                id: 'buildings-layer',
+                type: 'fill',
+                source: 'osm-polygons',
+                'source-layer': 'planet_osm_polygon',
+                filter: ['==', 'building', 'yes'],
+                paint: {
+                    'fill-color': ['match', ['get', 'building'], 'yes', '#d4a574', '#c9a07a'],
+                    'fill-opacity': 0.7,
+                    'fill-outline-color': '#a07050'
+                }
+            });
+            
+            // Дороги (основные типы)
+            map.addLayer({
+                id: 'roads-layer',
+                type: 'line',
+                source: 'osm-lines',
+                'source-layer': 'planet_osm_line',
+                filter: ['in', 'highway', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'service'],
+                paint: {
+                    'line-color': ['match', ['get', 'highway'],
+                        'motorway', '#ff3333',
+                        'trunk', '#ff6633',
+                        'primary', '#ff9933',
+                        'secondary', '#ffcc33',
+                        '#cccccc'
+                    ],
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 18, 6],
+                    'line-opacity': 0.85
+                }
+            });
+            
+            // Вода
+            map.addLayer({
+                id: 'water-layer',
+                type: 'fill',
+                source: 'osm-polygons',
+                'source-layer': 'planet_osm_polygon',
+                filter: ['==', 'natural', 'water'],
+                paint: { 'fill-color': '#3399ff', 'fill-opacity': 0.6 }
+            });
+            
+            // Парки/леса
+            map.addLayer({
+                id: 'landuse-layer',
+                type: 'fill',
+                source: 'osm-polygons',
+                'source-layer': 'planet_osm_polygon',
+                filter: ['in', 'landuse', 'forest', 'park', 'grass', 'meadow', 'recreation_ground'],
+                paint: { 'fill-color': '#66cc66', 'fill-opacity': 0.5 }
+            });
+            
+            // Названия (POI)
+            map.addLayer({
+                id: 'poi-labels',
+                type: 'symbol',
+                source: 'osm-points',
+                'source-layer': 'planet_osm_point',
+                filter: ['has', 'name'],
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-font': ['Noto Sans Regular'],
+                    'text-size': 11,
+                    'text-anchor': 'top',
+                    'text-offset': [0, 0.5],
+                    'text-allow-overlap': false
+                },
+                paint: {
+                    'text-color': '#333',
+                    'text-halo-color': '#fff',
+                    'text-halo-width': 1.5
+                }
+            });
+            
+            // Применяем текущие настройки видимости
+            updateLayerVisibility(map);
+        }
+        
+        function updateLayerVisibility(map) {
+            const visible = {
+                'buildings-layer': document.getElementById('toggle-buildings').checked,
+                'roads-layer': document.getElementById('toggle-roads').checked,
+                'water-layer': document.getElementById('toggle-water').checked,
+                'landuse-layer': document.getElementById('toggle-landuse').checked,
+                'poi-labels': document.getElementById('toggle-labels').checked
+            };
+            
+            for (const [layerId, isVisible] of Object.entries(visible)) {
+                if (map.getLayer(layerId)) {
+                    map.setLayoutProperty(layerId, 'visibility', isVisible ? 'visible' : 'none');
+                }
+            }
+        }
+        
+        // Загрузка стиля с обработчиком события 'styledata'
+        function loadStyle(styleName) {
+            const styleUrl = STYLES[styleName];
+            if (!styleUrl) return;
+            
+            currentStyle = styleName;
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.style-btn').forEach(btn => {
+                if (btn.dataset.style === styleName) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Загружаем новый стиль
+            currentMap.setStyle(styleUrl);
+            
+            // Ждём загрузки стиля и добавляем слои
+            currentMap.once('styledata', () => {
+                addMartinLayers(currentMap);
+            });
+        }
+        
+        // Инициализация карты
+        function initMap() {
+            currentMap = new maplibregl.Map({
+                container: 'map',
+                style: STYLES.bright,  // стартовый стиль
+                center: [37.6176, 55.7558],  // Москва
+                zoom: 12
+            });
+            
+            currentMap.addControl(new maplibregl.NavigationControl(), 'top-left');
+            
+            currentMap.on('load', () => {
+                addMartinLayers(currentMap);
+                console.log('✅ Карта загружена, слои Martin добавлены');
+            });
+            
+            // Клик для информации
+            currentMap.on('click', (e) => {
+                const features = currentMap.queryRenderedFeatures(e.point, { layers: MARTIN_LAYERS });
+                if (features.length > 0) {
+                    const f = features[0];
+                    const props = f.properties;
+                    let html = `<div style="max-width:250px;"><b>${props.name || 'Объект'}</b><br>`;
+                    if (props.highway) html += `Дорога: ${props.highway}<br>`;
+                    if (props.building) html += `Тип: здание<br>`;
+                    if (props.landuse) html += `Угодье: ${props.landuse}<br>`;
+                    if (props.natural) html += `Природа: ${props.natural}<br>`;
+                    html += `</div>`;
+                    new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(currentMap);
+                }
+            });
+            
+            // Координаты курсора
+            currentMap.on('mousemove', (e) => {
+                document.getElementById('coordPanel').innerHTML = 
+                    `📍 ${e.lngLat.lng.toFixed(4)}°, ${e.lngLat.lat.toFixed(4)}° | зум: ${currentMap.getZoom().toFixed(1)}`;
+            });
+            
+            // Обработчики переключателей стилей
+            document.querySelectorAll('.style-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    loadStyle(btn.dataset.style);
+                });
+            });
+            
+            // Обработчики слоёв
+            const toggles = ['toggle-buildings', 'toggle-roads', 'toggle-water', 'toggle-landuse', 'toggle-labels'];
+            toggles.forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    updateLayerVisibility(currentMap);
+                });
+            });
+        }
+        
+        initMap();
+    </script>
+</body>
+</html>

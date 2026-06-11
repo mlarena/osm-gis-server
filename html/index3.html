@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Карта 3 - Полная карта (все слои OSM + подложка)</title>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-family: sans-serif;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 160px;
+        }
+        .legend h3 { margin: 0 0 10px 0; font-size: 14px; }
+        .legend-item { display: flex; align-items: center; margin: 5px 0; }
+        .legend-color { width: 24px; height: 12px; margin-right: 10px; }
+        .legend-color.water { background: #6699cc; }
+        .legend-color.ground { background: #e0e0e0; }
+        .legend-color.building { background: #ffcc00; opacity: 0.6; }
+        .legend-color.road { background: #ff6600; }
+        .legend-color.poi { width: 10px; height: 10px; border-radius: 50%; background: #ff3366; }
+        .status {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            color: #0f0;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="status">
+        🟢 Martin: ${SERVER_URL}
+    </div>
+    <div class="legend">
+        <h3>🗺️ Легенда</h3>
+        <div class="legend-item"><div class="legend-color water"></div><span>Водоёмы (из растрового фона)</span></div>
+        <div class="legend-item"><div class="legend-color ground"></div><span>Земля, растительность (фон)</span></div>
+        <div class="legend-item"><div class="legend-color building"></div><span>Здания, парки (полигоны)</span></div>
+        <div class="legend-item"><div class="legend-color road"></div><span>Дороги, линии</span></div>
+        <div class="legend-item"><div class="legend-color poi"></div><span>Точки POI</span></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+
+    <script>
+        const SERVER_URL = 'http://192.168.192.156:3000';
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    // Растровая подложка OSM (уже содержит водоёмы, растительность)
+                    'osm-raster': {
+                        type: 'raster',
+                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '© OpenStreetMap'
+                    },
+                    // Наши векторные слои
+                    'polygons': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_polygon/{z}/{x}/{y}`]
+                    },
+                    'lines': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_line/{z}/{x}/{y}`]
+                    },
+                    'points': {
+                        type: 'vector',
+                        tiles: [`${SERVER_URL}/planet_osm_point/{z}/{x}/{y}`]
+                    }
+                },
+                layers: [
+                    // Слой 1: растровый фон OSM (вода, земля, здания видны)
+                    {
+                        id: 'background-osm',
+                        type: 'raster',
+                        source: 'osm-raster',
+                        minzoom: 0,
+                        maxzoom: 19
+                    },
+                    // Слой 2: наши полигоны (здания, парки) поверх фона
+                    {
+                        id: 'polygons-buildings',
+                        type: 'fill',
+                        source: 'polygons',
+                        'source-layer': 'planet_osm_polygon',
+                        paint: {
+                            'fill-color': '#ffcc44',
+                            'fill-opacity': 0.5,
+                            'fill-outline-color': '#ccaa33'
+                        },
+                        minzoom: 12
+                    },
+                    // Слой 3: линии (дороги, реки)
+                    {
+                        id: 'lines-roads',
+                        type: 'line',
+                        source: 'lines',
+                        'source-layer': 'planet_osm_line',
+                        paint: {
+                            'line-color': '#ff6600',
+                            'line-width': [
+                                'interpolate', ['linear'], ['zoom'],
+                                10, 1.5,
+                                14, 3,
+                                18, 5
+                            ],
+                            'line-opacity': 0.9
+                        }
+                    },
+                    // Слой 4: точки POI
+                    {
+                        id: 'points-interest',
+                        type: 'circle',
+                        source: 'points',
+                        'source-layer': 'planet_osm_point',
+                        paint: {
+                            'circle-radius': [
+                                'interpolate', ['linear'], ['zoom'],
+                                12, 4,
+                                16, 8,
+                                19, 12
+                            ],
+                            'circle-color': '#ff3366',
+                            'circle-opacity': 0.85,
+                            'circle-stroke-width': 1.5,
+                            'circle-stroke-color': '#ffffff'
+                        },
+                        minzoom: 13
+                    }
+                ]
+            },
+            center: [20.5, 54.7],
+            zoom: 13
+        });
+
+        map.addControl(new maplibregl.NavigationControl());
+        map.addControl(new maplibregl.ScaleControl());
+    </script>
+</body>
+</html>

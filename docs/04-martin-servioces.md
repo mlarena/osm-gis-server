@@ -11,7 +11,7 @@ Type=simple
 User=root
 WorkingDirectory=/tmp
 Environment="DATABASE_URL=postgresql://postgres:12345678@localhost:5432/gis"
-ExecStart=/usr/bin/martin --webui enable-for-all
+ExecStart=/usr/bin/martin --webui enable-for-all --auto-bounds=calc
 Restart=on-failure
 RestartSec=10
 
